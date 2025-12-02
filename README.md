@@ -4,30 +4,26 @@ Open-source, Kubernetes-native observability platform for AI agents.
 
 ## Architecture
 
+```mermaid
+flowchart LR
+    subgraph Agent Side
+        A[Your Agent] --> SDK[AgentOps SDK]
+    end
+
+    SDK --> C[(Collector - FastAPI)]
+    C -->|/v1/traces & /v1/spans| Storage[(Storage Layer)]
+    Storage -->|Traces & Metrics| UI[Web UI - Streamlit]
+    C -->|Realtime Events| UI
+
+    subgraph Storage Platforms
+        Storage --> SQLite[(SQLite / Dev)]
+        Storage --> ClickHouse[(ClickHouse / Prod)]
+        Storage --> Qdrant[(Qdrant / Vector Search)]
+    end
+
+    UI -->|Insights & RCA| User[Operators]
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         AgentOps OSS Stack                              │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ┌──────────────┐     ┌──────────────┐     ┌──────────────────────────┐ │
-│  │  Your Agent  │     │  Collector   │     │      Storage Layer       │ │
-│  │              │     │  (FastAPI)   │     │                          │ │
-│  │  ┌────────┐  │     │              │     │  ┌────────┐ ┌─────────┐  │ │
-│  │  │AgentOps│──┼────▶│  /v1/traces  │────▶│  │SQLite/ │ │ QDrant  │  │ │
-│  │  │  SDK   │  │     │  /v1/spans   │     │  │ClickHs │ │(vectors)│  │ │
-│  │  └────────┘  │     │              │     │  └────────┘ └─────────┘  │ │
-│  └──────────────┘     └──────┬───────┘     └──────────────────────────┘ │
-│                              │                          │               │
-│                              │         ┌────────────────┘               │
-│                              ▼         ▼                                │
-│                       ┌─────────────────────┐                           │
-│                       │     Web UI          │                           │
-│                       │  • Trace Explorer   │                           │
-│                       │  • Semantic Search  │                           │
-│                       │  • RCA Dashboard    │                           │
-│                       └─────────────────────┘                           │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+
 
 ## Quick Start
 
@@ -35,7 +31,7 @@ Open-source, Kubernetes-native observability platform for AI agents.
 
 ```bash
 # Clone and start
-git clone https://github.com/yourorg/agentops-oss.git
+git clone https://github.com/arec1b0/agentops-oss.git
 cd agentops-oss
 docker-compose up -d
 
