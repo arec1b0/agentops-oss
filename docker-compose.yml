@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # AgentOps Collector
+  collector:
+    build:
+      context: ./collector
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - agentops_data:/data
+    environment:
+      - AGENTOPS_DB_PATH=/data/agentops.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # AgentOps UI
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      - COLLECTOR_URL=http://collector:8000
+    depends_on:
+      collector:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  agentops_data:
