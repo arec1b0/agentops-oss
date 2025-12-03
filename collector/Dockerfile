@@ -2,6 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install curl for healthcheck
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -9,11 +12,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application
 COPY app/ app/
 
-# Create data directory
-RUN mkdir -p /data
-
 # Environment
-ENV AGENTOPS_DB_PATH=/data/agentops.db
+ENV CLICKHOUSE_HOST=localhost
+ENV CLICKHOUSE_PORT=8123
+ENV CLICKHOUSE_DB=agentops
+ENV CLICKHOUSE_USER=default
+ENV CLICKHOUSE_PASSWORD=
 ENV PYTHONUNBUFFERED=1
 
 # Expose port

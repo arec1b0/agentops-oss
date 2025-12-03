@@ -42,14 +42,21 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     global storage
     
-    # Startup
-    db_path = os.getenv("AGENTOPS_DB_PATH", "agentops.db")
-    storage = Storage(db_path)
-    logger.info(f"Storage initialized: {db_path}")
+    # Startup - Initialize ClickHouse connection
+    storage = Storage(
+        host=os.getenv("CLICKHOUSE_HOST", "localhost"),
+        port=int(os.getenv("CLICKHOUSE_PORT", "8123")),
+        database=os.getenv("CLICKHOUSE_DB", "agentops"),
+        username=os.getenv("CLICKHOUSE_USER", "default"),
+        password=os.getenv("CLICKHOUSE_PASSWORD", ""),
+    )
+    logger.info(f"ClickHouse storage initialized: {storage.host}:{storage.port}")
     
     yield
     
     # Shutdown
+    if storage:
+        storage.close()
     logger.info("Collector shutting down")
 
 

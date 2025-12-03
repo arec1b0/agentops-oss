@@ -4,53 +4,58 @@ Open-source, Kubernetes-native observability platform for AI agents.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    subgraph Agent Side
-        A[Your Agent] --> SDK[AgentOps SDK]
-    end
-
-    SDK --> C[(Collector - FastAPI)]
-    C -->|/v1/traces & /v1/spans| Storage[(Storage Layer)]
-    Storage -->|Traces & Metrics| UI[Web UI - Streamlit]
-    C -->|Realtime Events| UI
-
-    subgraph Storage Platforms
-        Storage --> SQLite[(SQLite / Dev)]
-        Storage --> ClickHouse[(ClickHouse / Prod)]
-        Storage --> Qdrant[(Qdrant / Vector Search)]
-    end
-
-    UI -->|Insights & RCA| User[Operators]
 ```
-
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         AgentOps OSS Stack                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌──────────────┐     ┌──────────────┐     ┌──────────────────────────┐ │
+│  │  Your Agent  │     │  Collector   │     │      ClickHouse          │ │
+│  │              │     │  (FastAPI)   │     │   (Columnar Storage)     │ │
+│  │  ┌────────┐  │     │              │     │                          │ │
+│  │  │AgentOps│──┼────▶│  /v1/traces  │────▶│  • MergeTree engine      │ │
+│  │  │  SDK   │  │     │  /v1/spans   │     │  • Time partitioning     │ │
+│  │  └────────┘  │     │              │     │  • Bloom filter search   │ │
+│  └──────────────┘     └──────┬───────┘     │  • Native percentiles    │ │
+│                              │             └──────────────────────────┘ │
+│                              │                          │               │
+│                              │         ┌────────────────┘               │
+│                              ▼         ▼                                │
+│                       ┌─────────────────────┐                           │
+│                       │     Web UI          │                           │
+│                       │  • Trace Explorer   │                           │
+│                       │  • Text Search      │                           │
+│                       │  • Analytics        │                           │
+│                       └─────────────────────┘                           │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ## Quick Start
 
-### Local Development (Docker Compose)
+### Docker Compose (Recommended)
 
 ```bash
-# Clone and start
 git clone https://github.com/arec1b0/agentops-oss.git
 cd agentops-oss
 docker-compose up -d
 
-# Install SDK
-pip install -e ./sdk/python
-
-# Run example
-python examples/basic_agent.py
-
-# Open UI
-open http://localhost:8501
+# Services:
+# - ClickHouse: localhost:8123 (HTTP), localhost:9000 (Native)
+# - Collector:  localhost:8000 (API), localhost:8000/docs (Swagger)
+# - UI:         localhost:8501
 ```
 
-### Kubernetes Deployment
+### Install SDK
 
 ```bash
-helm install agentops ./deploy/helm/agentops \
-  --namespace agentops \
-  --create-namespace
+pip install -e ./sdk/python
+```
+
+### Run Example
+
+```bash
+python examples/basic_agent.py
+open http://localhost:8501
 ```
 
 ## SDK Usage
@@ -79,10 +84,18 @@ async def search_database(query: str):
 
 | Component | Description | Port |
 |-----------|-------------|------|
-| SDK | Python instrumentation library | - |
-| Collector | FastAPI service for ingestion | 8000 |
+| ClickHouse | Columnar DB for traces/spans | 8123 (HTTP), 9000 (Native) |
+| Collector | FastAPI ingestion service | 8000 |
 | UI | Streamlit dashboard | 8501 |
-| Storage | SQLite (dev) / ClickHouse (prod) | - |
+| SDK | Python instrumentation library | - |
+
+## Why ClickHouse?
+
+- **Columnar storage**: 10-100x faster analytical queries vs row-based DBs
+- **MergeTree engine**: Optimized for time-series append workloads
+- **Native percentiles**: `quantile(0.95)(duration_ms)` without pre-aggregation
+- **Bloom filter indexes**: Fast text search over span content
+- **Compression**: 5-10x storage reduction for trace data
 
 ## Features
 
