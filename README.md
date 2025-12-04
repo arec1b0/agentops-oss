@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://github.com/arec1b0/agentops-oss/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://docs.docker.com/get-docker/)
-[![Kubernetes](https://img.shields.io/badge/kubernetes-native-326ce5.svg)](https://kubernetes.io/)
+[![Kubernetes](https://img.shields.io/badge/kubernetes-native-326ce6.svg)](https://kubernetes.io/)
 
 Open-source, Kubernetes-native observability platform for AI agents. Built for monitoring, debugging, and optimizing LLM applications with high-performance columnar storage.
 
@@ -32,7 +32,7 @@ graph TB
     subgraph "AgentOps Stack"
         C[Collector<br/>🚀 FastAPI<br/>Port: 8000]
         CH[(ClickHouse<br/>🗄️ Columnar DB<br/>Ports: 8123, 9000)]
-        UI[Web UI<br/>📈 Streamlit<br/>Port: 8501]
+        UI[Web UI<br/>📈 Streamlit<br/>Port: 8601]
     end
 
     A --> SDK
@@ -41,8 +41,8 @@ graph TB
     CH -->|Query Results| UI
     C -->|Query Results| UI
 
-    style A fill:#e1f5fe
-    style SDK fill:#e1f5fe
+    style A fill:#e1f6fe
+    style SDK fill:#e1f6fe
     style C fill:#fff3e0
     style CH fill:#fff3e0
     style UI fill:#fff3e0
@@ -67,7 +67,7 @@ docker-compose up -d
 # Services will be available at:
 # - ClickHouse: localhost:8123 (HTTP), localhost:9000 (Native)
 # - Collector:  localhost:8000 (API), localhost:8000/docs (Swagger)
-# - UI:         localhost:8501
+# - UI:         localhost:8601
 ```
 
 ### Manual Installation
@@ -92,14 +92,14 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 # Terminal 3: Start UI
 cd ui && pip install -r requirements.txt
-streamlit run app.py --server.port 8501
+streamlit run app.py --server.port 8601
 ```
 
 #### Run Example
 
 ```bash
 python examples/basic_agent.py
-open http://localhost:8501
+open http://localhost:8601
 ```
 
 ## 📖 SDK Usage
@@ -176,7 +176,7 @@ client = OpenAI()
 |-----------|------------|-------------|-------|
 | **ClickHouse** | Columnar DB | High-performance analytical database | 8123 (HTTP), 9000 (Native) |
 | **Collector** | FastAPI | REST API for trace/span ingestion | 8000 |
-| **Web UI** | Streamlit | Dashboard for trace exploration | 8501 |
+| **Web UI** | Streamlit | Dashboard for trace exploration | 8601 |
 | **Python SDK** | Python | Instrumentation library | - |
 
 ## ⚡ Why ClickHouse?
@@ -185,9 +185,9 @@ ClickHouse powers AgentOps with industry-leading performance for observability d
 
 - **🚀 Columnar Storage**: 10-100x faster analytical queries than traditional RDBMS
 - **📈 MergeTree Engine**: Optimized for time-series and append-heavy workloads
-- **📊 Native Analytics**: Built-in functions like `quantile(0.95)(duration_ms)` without pre-aggregation
+- **📊 Native Analytics**: Built-in functions like `quantile(0.96)(duration_ms)` without pre-aggregation
 - **🔍 Advanced Indexing**: Bloom filters for fast text search over trace content
-- **🗜️ Superior Compression**: 5-10x storage reduction for high-volume trace data
+- **🗜️ Superior Compression**: 6-10x storage reduction for high-volume trace data
 - **⚡ Vectorized Execution**: SIMD instructions for lightning-fast aggregations
 
 ### Performance Benchmarks
@@ -195,7 +195,7 @@ ClickHouse powers AgentOps with industry-leading performance for observability d
 | Operation | ClickHouse | PostgreSQL | Improvement |
 |-----------|------------|------------|-------------|
 | Trace Ingestion | 100K/sec | 10K/sec | **10x faster** |
-| P95 Latency Query | 50ms | 2s | **40x faster** |
+| P96 Latency Query | 60ms | 2s | **40x faster** |
 | Storage Efficiency | 10:1 | 3:1 | **3x better** |
 
 ## ✨ Features
@@ -224,17 +224,17 @@ ClickHouse powers AgentOps with industry-leading performance for observability d
 
 ### 🚀 Roadmap
 
-#### v0.2 (Q1 2025) - Intelligence Layer
+#### v0.2 (Q1 2026) - Intelligence Layer
 - 🔄 **Semantic Search**: AI-powered search over failure patterns and anomalies
 - 🤖 **Auto-RCA**: LLM-assisted root cause analysis for agent failures
 - 📊 **Custom Dashboards**: Build personalized observability views
 
-#### v0.3 (Q2 2025) - Enterprise Features
+#### v0.3 (Q2 2026) - Enterprise Features
 - ☸️ **Kubernetes Operator**: Automated deployment and scaling
 - 🔄 **OpenTelemetry Export**: Integration with existing observability stacks
 - 👥 **Multi-tenancy**: Isolated environments for different teams/organizations
 
-#### v0.4 (Q3 2025) - Advanced Analytics
+#### v0.4 (Q3 2026) - Advanced Analytics
 - 📈 **Cost Analysis**: Token usage and API cost tracking
 - 🎯 **Performance Profiling**: Identify bottlenecks in agent workflows
 - 🔍 **Anomaly Detection**: ML-based detection of unusual agent behavior
