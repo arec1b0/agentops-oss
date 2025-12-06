@@ -270,11 +270,14 @@ def my_function():
 
 ## 🔒 Security
 
+> [!WARNING]
+> **Development Mode Risk:** If `AGENTOPS_ADMIN_KEY` is not set, the Collector runs in development mode without authentication. Never deploy to production without configuring API keys.
+
 ### API Key Authentication
 The AgentOps Collector uses API key authentication to secure trace ingestion and data access.
 
 #### 1. Generate a Secure Key
-We recommend using a 32-byte (64-character) hex string for high entropy, though any strong unique string is accepted.
+We recommend using a 32-byte (64-character) hex string for high entropy. The system accepts any unique string, but weak keys are strongly discouraged.
 
 ```bash
 # Generate a random 32-byte key (64 hex characters)
@@ -289,27 +292,37 @@ Create a `.env` file in the root directory. This file is **excluded from version
 # Collector: Admin key (Grants full access: ingest, read, admin)
 AGENTOPS_ADMIN_KEY=<your_generated_key>
 
-# SDK & UI: Client key (Must match the Admin Key or other configured keys)
+# Collector: Named Keys (Optional - Create scoped keys for different environments)
+# Format: AGENTOPS_API_KEY_<NAME>=<key>:<scopes>:<rate_limit>
+AGENTOPS_API_KEY_PROD=prod_key_xyz789:ingest,read:1000
+AGENTOPS_API_KEY_DEV=dev_key_abc123:ingest:100
+
+# SDK & UI: Client key
+# Must match AGENTOPS_ADMIN_KEY or one of the configured named keys (e.g., PROD/DEV)
 AGENTOPS_API_KEY=<your_generated_key>
 
-# Optional: Secure ClickHouse Password
+# Optional: Secure ClickHouse Password (internal service authentication)
 CLICKHOUSE_PASSWORD=<another_secure_generated_key>
 ```
 
-**Note:** If `AGENTOPS_ADMIN_KEY` is not set, the Collector runs in **development mode** and will not require authentication.
-
 ### Security Best Practices
 
-*   **File Permissions**: Restrict access to your `.env` file (Linux/Mac):
-    ```bash
-    chmod 600 .env
-    ```
+*   **File Permissions**: Restrict access to your `.env` file.
+    *   **Linux/Mac**: `chmod 600 .env`
+    *   **Windows**: Configure NTFS permissions to allow read access only to the owner.
 *   **Version Control**: Verify that `.env` is listed in your `.gitignore` to prevent accidental commits of secrets.
 *   **Key Management**:
-    *   **Rotation**: Rotate keys periodically or immediately if compromised. Update the `.env` file and restart services (`docker-compose restart`) to apply changes.
-    *   **Isolation**: Use distinct keys for Development, Staging, and Production environments.
-*   **Network Security**:
-    *   Configure `AGENTOPS_CORS_ORIGINS` in your environment to restrict browser access to trusted domains (default allows localhost).
+    *   **Rotation Procedure**:
+        1.  Generate a new key (`openssl rand -hex 32`).
+        2.  Update `.env` with the new key.
+        3.  Restart services: `docker-compose down && docker-compose up -d`.
+        4.  Verify access using the new key.
+        5.  **Rollback**: If issues arise, revert `.env` to the old key and restart services.
+    *   **Frequency**: Rotate keys quarterly or immediately upon staff changes/compromise.
+    *   **Isolation**: Use distinct keys for Development, Staging, and Production environments (see Named Keys example above).
+
+#### Network Configuration
+*   **CORS**: Configure `AGENTOPS_CORS_ORIGINS` in your environment to restrict browser access to trusted domains. The default setting allows `localhost` only.
 
 ## 🤝 Contributing
 
