@@ -8,6 +8,7 @@ Thread-safe, async-compatible tracer with automatic context propagation.
 from __future__ import annotations
 
 import asyncio
+import os
 import threading
 import logging
 import atexit
@@ -36,11 +37,13 @@ class AgentTracer:
     - Async-safe with contextvars
     - Batched export with configurable flush
     - Multiple exporter support
+    - API key authentication
     
     Usage:
         tracer = AgentTracer(
             service_name="my-agent",
-            collector_url="http://localhost:8000"
+            collector_url="http://localhost:8000",
+            api_key="sk-your-api-key",  # Optional, required if auth enabled
         )
         
         with tracer.start_span("process_query", kind=SpanKind.AGENT) as span:
@@ -54,6 +57,7 @@ class AgentTracer:
         service_name: str,
         service_version: str = "0.0.1",
         collector_url: Optional[str] = None,
+        api_key: Optional[str] = None,
         exporters: Optional[List[SpanExporter]] = None,
         batch_size: int = 100,
         flush_interval: float = 5.0,
@@ -64,11 +68,19 @@ class AgentTracer:
         self.service_version = service_version
         self.enabled = enabled
         
+        # Get API key from parameter or environment
+        self._api_key = api_key or os.getenv("AGENTOPS_API_KEY")
+        
         # Initialize exporters
         self._exporters: List[SpanExporter] = exporters or []
         
         if collector_url:
-            self._exporters.append(HTTPExporter(collector_url))
+            self._exporters.append(HTTPExporter(
+                collector_url=collector_url,
+                api_key=self._api_key,
+                service_name=service_name,
+                service_version=service_version,
+            ))
         
         if console_output:
             self._exporters.append(ConsoleExporter())
@@ -88,7 +100,8 @@ class AgentTracer:
         # Register shutdown hook
         atexit.register(self.shutdown)
         
-        logger.info(f"AgentTracer initialized for service: {service_name}")
+        auth_status = "enabled" if self._api_key else "disabled"
+        logger.info(f"AgentTracer initialized for service: {service_name} (auth: {auth_status})")
     
     @contextmanager
     def start_span(

@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
+import time
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -39,8 +41,11 @@ class HTTPExporter(SpanExporter):
     Export spans and traces to HTTP collector endpoint.
     
     Endpoints:
-    - POST /v1/spans - Batch span ingestion
+    - POST /v1/ingest - Batch span ingestion
     - POST /v1/traces - Complete trace ingestion
+    
+    Authentication:
+    - Set api_key to enable X-API-Key header authentication
     """
     
     def __init__(
@@ -49,15 +54,25 @@ class HTTPExporter(SpanExporter):
         timeout: float = 10.0,
         headers: Optional[Dict[str, str]] = None,
         api_key: Optional[str] = None,
+        retry_count: int = 3,
+        retry_delay: float = 1.0,
+        service_name: str = "default",
+        service_version: Optional[str] = None,
     ):
         self.collector_url = collector_url.rstrip("/")
         self.timeout = timeout
         self.headers = headers or {}
+        self.retry_count = retry_count
+        self.retry_delay = retry_delay
+        self.service_name = service_name
+        self.service_version = service_version
         
+        # Set API key header (X-API-Key for AgentOps collector)
         if api_key:
-            self.headers["Authorization"] = f"Bearer {api_key}"
+            self.headers["X-API-Key"] = api_key
         
         self.headers.setdefault("Content-Type", "application/json")
+        self.headers.setdefault("User-Agent", "agentops-sdk/0.1.0")
         
         # Lazy import to avoid startup cost
         self._session = None
@@ -80,39 +95,66 @@ class HTTPExporter(SpanExporter):
         return self._session
     
     def _post(self, endpoint: str, data: Dict[str, Any]) -> bool:
-        """Send POST request to collector."""
+        """Send POST request to collector with retry."""
         url = f"{self.collector_url}{endpoint}"
         payload = json.dumps(data, default=str)
         
         session = self._get_session()
         
-        try:
-            if session == "urllib":
-                # Fallback to urllib
-                import urllib.request
-                req = urllib.request.Request(
-                    url,
-                    data=payload.encode("utf-8"),
-                    headers=self.headers,
-                    method="POST",
-                )
-                with urllib.request.urlopen(req, timeout=self.timeout) as response:
-                    return response.status == 200
-            else:
-                # Use httpx
-                response = session.post(url, content=payload)
-                return response.status_code in (200, 201, 202)
-                
-        except Exception as e:
-            logger.error(f"Failed to export to {url}: {e}")
-            return False
+        for attempt in range(self.retry_count):
+            try:
+                if session == "urllib":
+                    # Fallback to urllib
+                    import urllib.request
+                    req = urllib.request.Request(
+                        url,
+                        data=payload.encode("utf-8"),
+                        headers=self.headers,
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req, timeout=self.timeout) as response:
+                        return response.status in (200, 201, 202)
+                else:
+                    # Use httpx
+                    response = session.post(url, content=payload)
+                    
+                    if response.status_code in (200, 201, 202):
+                        return True
+                    
+                    if response.status_code == 429:
+                        # Rate limited
+                        retry_after = int(response.headers.get("Retry-After", "60"))
+                        logger.warning(f"Rate limited, retry after {retry_after}s")
+                        time.sleep(min(retry_after, 60))
+                        continue
+                    
+                    if response.status_code in (401, 403):
+                        logger.error(
+                            f"Authentication failed: {response.status_code}. "
+                            "Check api_key parameter or AGENTOPS_API_KEY env var."
+                        )
+                        return False  # Don't retry auth errors
+                    
+                    logger.warning(f"Collector returned {response.status_code}: {response.text}")
+                    
+            except Exception as e:
+                logger.warning(f"Export attempt {attempt + 1} failed: {e}")
+            
+            # Exponential backoff
+            if attempt < self.retry_count - 1:
+                time.sleep(self.retry_delay * (2 ** attempt))
+        
+        logger.error(f"Failed to export to {url} after {self.retry_count} retries")
+        return False
     
     def export_spans(self, spans: List[Any]) -> bool:
         """Export batch of spans."""
         data = {
-            "spans": [s.to_dict() if hasattr(s, "to_dict") else s for s in spans]
+            "spans": [s.to_dict() if hasattr(s, "to_dict") else s for s in spans],
+            "service_name": self.service_name,
+            "service_version": self.service_version,
         }
-        return self._post("/v1/spans", data)
+        return self._post("/v1/ingest", data)
     
     def export_trace(self, trace: Any) -> bool:
         """Export complete trace."""
