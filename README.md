@@ -277,7 +277,7 @@ def my_function():
 The AgentOps Collector uses API key authentication to secure trace ingestion and data access.
 
 #### 1. Generate a Secure Key
-We recommend using a 32-byte (64-character) hex string for high entropy. The system accepts any unique string, but weak keys are strongly discouraged.
+We recommend using a 32-byte (64-character) hex string for high entropy. The system accepts any unique string (no minimum length is enforced), but weak keys are strongly discouraged.
 
 ```bash
 # Generate a random 32-byte key (64 hex characters)
@@ -288,17 +288,26 @@ openssl rand -hex 32
 #### 2. Configure Environment Variables
 Create a `.env` file in the root directory. This file is **excluded from version control** by default.
 
+**Collector Configuration (Server-Side)**
+The Collector automatically scans for these variables at startup.
+
 ```env
-# Collector: Admin key (Grants full access: ingest, read, admin)
+# Admin Key: Grants full access (ingest, read, admin) with unlimited rate limit
 AGENTOPS_ADMIN_KEY=<your_generated_key>
 
-# Collector: Named Keys (Optional - Create scoped keys for different environments)
+# Named Keys (Optional): Create scoped keys for specific environments or teams.
 # Format: AGENTOPS_API_KEY_<NAME>=<key>:<scopes>:<rate_limit>
-AGENTOPS_API_KEY_PROD=prod_key_xyz789:ingest,read:1000
-AGENTOPS_API_KEY_DEV=dev_key_abc123:ingest:100
+# Scopes: ingest, read, admin
+AGENTOPS_API_KEY_PROD=prod_key_8f4b...:ingest,read:1000
+AGENTOPS_API_KEY_DEV=dev_key_3d2a...:ingest:100
+```
 
-# SDK & UI: Client key
-# Must match AGENTOPS_ADMIN_KEY or one of the configured named keys (e.g., PROD/DEV)
+**SDK & UI Configuration (Client-Side)**
+Configure the client to use *one* of the keys defined above.
+
+```env
+# Set this to the raw key value (the part before the first colon in Named Keys)
+# Example: If using AGENTOPS_API_KEY_PROD above, use: prod_key_8f4b...
 AGENTOPS_API_KEY=<your_generated_key>
 
 # Optional: Secure ClickHouse Password (internal service authentication)
@@ -309,17 +318,19 @@ CLICKHOUSE_PASSWORD=<another_secure_generated_key>
 
 *   **File Permissions**: Restrict access to your `.env` file.
     *   **Linux/Mac**: `chmod 600 .env`
-    *   **Windows**: Configure NTFS permissions to allow read access only to the owner.
+    *   **Windows**: `icacls .env /inheritance:r /grant:r "%USERNAME%:R"`
 *   **Version Control**: Verify that `.env` is listed in your `.gitignore` to prevent accidental commits of secrets.
 *   **Key Management**:
     *   **Rotation Procedure**:
-        1.  Generate a new key (`openssl rand -hex 32`).
-        2.  Update `.env` with the new key.
-        3.  Restart services: `docker-compose down && docker-compose up -d`.
-        4.  Verify access using the new key.
-        5.  **Rollback**: If issues arise, revert `.env` to the old key and restart services.
-    *   **Frequency**: Rotate keys quarterly or immediately upon staff changes/compromise.
-    *   **Isolation**: Use distinct keys for Development, Staging, and Production environments (see Named Keys example above).
+        1.  **Backup**: `cp .env .env.bak`
+        2.  **Generate**: Create a new key (`openssl rand -hex 32`).
+        3.  **Update**: Replace the key in `.env`.
+            *   *For Named Keys*: Update the key portion only (e.g., change `old_key:scope:limit` to `new_key:scope:limit`).
+        4.  **Restart**: `docker-compose down && docker-compose up -d`.
+        5.  **Verify**: Check logs and connectivity with the new key.
+        6.  **Rollback**: If issues arise, restore the backup (`cp .env.bak .env`) and restart.
+    *   **Frequency**: Rotate keys quarterly or immediately when staff with key access leave the organization or change roles.
+    *   **Isolation**: Use distinct Named Keys for Development, Staging, and Production environments.
 
 #### Network Configuration
 *   **CORS**: Configure `AGENTOPS_CORS_ORIGINS` in your environment to restrict browser access to trusted domains. The default setting allows `localhost` only.
