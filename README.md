@@ -277,7 +277,7 @@ def my_function():
 The AgentOps Collector uses API key authentication to secure trace ingestion and data access.
 
 #### 1. Generate a Secure Key
-We recommend using a 32-byte (64-character) hex string for high entropy. The system accepts any unique string (no minimum length is enforced), but weak keys are strongly discouraged.
+We recommend using a 32-byte (64-character) hex string for high entropy. The system accepts any unique string (keys shorter than 32 characters are accepted without warnings, but are not recommended for production).
 
 ```bash
 # Generate a random 32-byte key (64 hex characters)
@@ -289,7 +289,7 @@ openssl rand -hex 32
 Create a `.env` file in the root directory. This file is **excluded from version control** by default.
 
 **Collector Configuration (Server-Side)**
-The Collector automatically scans for these variables at startup.
+The Collector scans for all `AGENTOPS_API_KEY_<NAME>` variables at startup. Invalid formats (missing colons/values) are silently ignored.
 
 ```env
 # Admin Key: Grants full access (ingest, read, admin) with unlimited rate limit
@@ -306,9 +306,11 @@ AGENTOPS_API_KEY_DEV=dev_key_3d2a...:ingest:100
 Configure the client to use *one* of the keys defined above.
 
 ```env
-# Set this to the raw key value (the part before the first colon in Named Keys)
-# Example: If using AGENTOPS_API_KEY_PROD above, use: prod_key_8f4b...
-AGENTOPS_API_KEY=<your_generated_key>
+# Use the raw key value (the part before the first colon in Named Keys).
+# Example:
+# If AGENTOPS_API_KEY_PROD=prod_key_8f4b...:ingest,read:1000
+# Then use:
+AGENTOPS_API_KEY=prod_key_8f4b...
 
 # Optional: Secure ClickHouse Password (internal service authentication)
 CLICKHOUSE_PASSWORD=<another_secure_generated_key>
@@ -318,14 +320,15 @@ CLICKHOUSE_PASSWORD=<another_secure_generated_key>
 
 *   **File Permissions**: Restrict access to your `.env` file.
     *   **Linux/Mac**: `chmod 600 .env`
-    *   **Windows**: `icacls .env /inheritance:r /grant:r "%USERNAME%:R"`
+    *   **Windows**: `icacls .env /inheritance:r /grant:r "%USERNAME%:R"` (Verify with `icacls .env`)
 *   **Version Control**: Verify that `.env` is listed in your `.gitignore` to prevent accidental commits of secrets.
 *   **Key Management**:
     *   **Rotation Procedure**:
         1.  **Backup**: `cp .env .env.bak`
         2.  **Generate**: Create a new key (`openssl rand -hex 32`).
         3.  **Update**: Replace the key in `.env`.
-            *   *For Named Keys*: Update the key portion only (e.g., change `old_key:scope:limit` to `new_key:scope:limit`).
+            *   *For Named Keys*: Update the key portion only.
+            *   Example: Change `AGENTOPS_API_KEY_PROD=old_key:ingest:1000` to `AGENTOPS_API_KEY_PROD=new_key:ingest:1000`
         4.  **Restart**: `docker-compose down && docker-compose up -d`.
         5.  **Verify**: Check logs and connectivity with the new key.
         6.  **Rollback**: If issues arise, restore the backup (`cp .env.bak .env`) and restart.
