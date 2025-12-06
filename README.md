@@ -16,6 +16,7 @@ Open-source, Kubernetes-native observability platform for AI agents. Built for m
 - [🧩 Components](#-components)
 - [⚡ Why ClickHouse?](#-why-clickhouse)
 - [✨ Features](#-features)
+- [🔒 Security](#-security)
 - [🤝 Contributing](#-contributing)
 - [📚 Documentation](#-documentation)
 - [📄 License](#-license)
@@ -265,6 +266,22 @@ with tracer.trace("operation_name") as span:
 @tracer.trace
 def my_function():
     pass
+```
+
+## 🔒 Security
+
+### Generate Keys
+Generate a secure random key using OpenSSL:
+
+```bash
+openssl rand -hex 32
+```
+
+### Configure .env
+Create a `.env` file in the root directory to configure your environment variables:
+
+```env
+AGENTOPS_API_KEY=<your_generated_key>
 ```
 
 ## 🤝 Contributing
