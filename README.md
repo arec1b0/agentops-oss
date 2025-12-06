@@ -270,19 +270,46 @@ def my_function():
 
 ## 🔒 Security
 
-### Generate Keys
-Generate a secure random key using OpenSSL:
+### API Key Authentication
+The AgentOps Collector uses API key authentication to secure trace ingestion and data access.
+
+#### 1. Generate a Secure Key
+We recommend using a 32-byte (64-character) hex string for high entropy, though any strong unique string is accepted.
 
 ```bash
+# Generate a random 32-byte key (64 hex characters)
 openssl rand -hex 32
+# Output example: 8f4b...3d2a
 ```
 
-### Configure .env
-Create a `.env` file in the root directory to configure your environment variables:
+#### 2. Configure Environment Variables
+Create a `.env` file in the root directory. This file is **excluded from version control** by default.
 
 ```env
+# Collector: Admin key (Grants full access: ingest, read, admin)
+AGENTOPS_ADMIN_KEY=<your_generated_key>
+
+# SDK & UI: Client key (Must match the Admin Key or other configured keys)
 AGENTOPS_API_KEY=<your_generated_key>
+
+# Optional: Secure ClickHouse Password
+CLICKHOUSE_PASSWORD=<another_secure_generated_key>
 ```
+
+**Note:** If `AGENTOPS_ADMIN_KEY` is not set, the Collector runs in **development mode** and will not require authentication.
+
+### Security Best Practices
+
+*   **File Permissions**: Restrict access to your `.env` file (Linux/Mac):
+    ```bash
+    chmod 600 .env
+    ```
+*   **Version Control**: Verify that `.env` is listed in your `.gitignore` to prevent accidental commits of secrets.
+*   **Key Management**:
+    *   **Rotation**: Rotate keys periodically or immediately if compromised. Update the `.env` file and restart services (`docker-compose restart`) to apply changes.
+    *   **Isolation**: Use distinct keys for Development, Staging, and Production environments.
+*   **Network Security**:
+    *   Configure `AGENTOPS_CORS_ORIGINS` in your environment to restrict browser access to trusted domains (default allows localhost).
 
 ## 🤝 Contributing
 
